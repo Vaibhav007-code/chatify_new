@@ -1,0 +1,461 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Pinterest-inspired colors */
+  --pinterest-red: #e60023;
+  --pinterest-dark: #111111;
+  --pinterest-light: #ffffff;
+  --pinterest-gray: #767676;
+  
+  /* Light theme */
+  --background-light: #ffffff;
+  --primary-light: var(--pinterest-red);
+  --text-light: #111111;
+  
+  /* Dark theme */
+  --background-dark: #111111;
+  --primary-dark: var(--pinterest-red);
+  --text-dark: #ffffff;
+
+  /* Dark theme colors */
+  --dark-bg: #121212;
+  --dark-surface: #1e1e1e;
+  --dark-border: #2d2d2d;
+  --dark-text: #ffffff;
+  --accent-color: #e60023;
+  --online-color: #22c55e;
+  --offline-color: #6b7280;
+}
+
+/* Theme transitions */
+.light {
+  --bg-primary: var(--background-light);
+  --text-primary: var(--text-light);
+  --accent: var(--pinterest-red);
+  background: #fafafa;
+  color: var(--text-light);
+}
+
+.dark {
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --hover-bg: rgba(255, 255, 255, 0.05);
+}
+
+/* Glassmorphism effects */
+.glass-light {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.glass-dark {
+  background: rgba(30, 30, 30, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+}
+
+/* Message bubbles */
+.message-bubble {
+  position: relative;
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  transition: all 0.2s ease;
+}
+
+.light .message-sent {
+  background: var(--pinterest-red);
+  color: white;
+  margin-left: auto;
+  border-radius: 16px 16px 4px 16px;
+}
+
+.dark .message-sent {
+  background: var(--pinterest-red);
+  color: white;
+  margin-left: auto;
+  border-radius: 16px 16px 4px 16px;
+}
+
+.light .message-received {
+  background: #f0f0f0;
+  margin-right: auto;
+  border-radius: 16px 16px 16px 4px;
+}
+
+.dark .message-received {
+  background: #2d2d2d;
+  margin-right: auto;
+  border-radius: 16px 16px 16px 4px;
+}
+
+/* Input area styles */
+.input-area {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  max-width: 800px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+}
+
+.dark .input-area {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+/* Action buttons */
+.action-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-center: center;
+  transition: all 0.2s ease;
+  background: rgba(230, 0, 35, 0.1);
+  color: var(--pinterest-red);
+}
+
+.action-button:hover {
+  background: rgba(230, 0, 35, 0.2);
+  transform: scale(1.05);
+}
+
+/* Theme toggle */
+.theme-toggle {
+  position: relative;
+  width: 50px;
+  height: 26px;
+  border-radius: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(230, 0, 35, 0.2);
+  border: 2px solid var(--pinterest-red);
+}
+
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--pinterest-red);
+  transition: all 0.3s ease;
+}
+
+.dark .theme-toggle::after {
+  transform: translateX(24px);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .input-area {
+    bottom: 10px;
+    width: calc(100% - 20px);
+    padding: 12px;
+  }
+
+  .message-bubble {
+    max-width: 90%;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(230, 0, 35, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(230, 0, 35, 0.5);
+}
+
+/* Dark mode specific styles */
+.dark .glass-dark {
+  background: rgba(30, 30, 30, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+}
+
+.dark .message-received {
+  background: #2d2d2d;
+  color: #ffffff;
+}
+
+.dark .input-area {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.dark .notion-input {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .action-button {
+  background: rgba(230, 0, 35, 0.2);
+  color: #ffffff;
+}
+
+/* Sidebar styles */
+.sidebar {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+}
+
+/* User list styles */
+.user-list-item {
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.user-list-item:hover {
+  background: var(--hover-bg);
+}
+
+.user-list-item.selected {
+  background: rgba(230, 0, 35, 0.1);
+  border-color: var(--accent-color);
+}
+
+/* Online/Offline indicators */
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-online {
+  background-color: var(--online-color);
+  box-shadow: 0 0 8px var(--online-color);
+}
+
+.status-offline {
+  background-color: var(--offline-color);
+}
+
+/* Add these to your existing styles */
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-700 {
+  animation-delay: 700ms;
+}
+
+/* Add gradient animation */
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.bg-gradient-animate {
+  background-size: 200% 200%;
+  animation: gradient 15s ease infinite;
+}
+
+/* Add to your existing animations */
+
+@keyframes float {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  50% {
+    transform: translateY(-10px) translateX(5px);
+  }
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-text {
+  background-size: 200% auto;
+  animation: gradient 3s linear infinite;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.perspective {
+  perspective: 800px;
+}
+
+@keyframes float-3d {
+  0%, 100% {
+    transform: translateZ(0) translateY(0) rotateX(0);
+  }
+  50% {
+    transform: translateZ(20px) translateY(-10px) rotateX(5deg);
+  }
+}
+
+.float-3d {
+  animation: float-3d 3s ease-in-out infinite;
+}
+
+/* Add these Netflix-inspired animations */
+
+@keyframes netflix-pulse {
+  0%, 100% { 
+    text-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+    color: #E50914;
+  }
+  50% { 
+    text-shadow: 0 0 40px rgba(229, 9, 20, 0.8);
+    color: #ff0f1f;
+  }
+}
+
+.netflix-text {
+  animation: netflix-pulse 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.netflix-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(229, 9, 20, 0) 0%,
+    rgba(229, 9, 20, 0.2) 50%,
+    rgba(229, 9, 20, 0) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+@keyframes float-netflix {
+  0%, 100% {
+    transform: translateY(0) translateX(0) scale(1);
+    text-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+  }
+  50% {
+    transform: translateY(-10px) translateX(5px) scale(1.05);
+    text-shadow: 0 0 40px rgba(229, 9, 20, 0.8);
+  }
+}
+
+.float-netflix {
+  animation: float-netflix 3s ease-in-out infinite;
+}
+
+/* Add gradient background for Netflix style */
+.bg-gradient-netflix {
+  background: radial-gradient(
+    circle at center,
+    rgba(229, 9, 20, 0.1) 0%,
+    rgba(20, 20, 20, 1) 100%
+  );
+}
+
+/* Add these cinematic animations */
+
+@keyframes beam {
+  0% {
+    opacity: 0;
+    transform: translateY(100%) rotate(45deg);
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%) rotate(45deg);
+  }
+}
+
+.light-beam {
+  animation: beam 3s linear infinite;
+}
+
+@keyframes float-cinematic {
+  0%, 100% {
+    transform: translateY(0) translateX(0) scale(1);
+    text-shadow: 0 0 20px rgba(250, 204, 21, 0.5);
+  }
+  50% {
+    transform: translateY(-10px) translateX(5px) scale(1.05);
+    text-shadow: 0 0 40px rgba(250, 204, 21, 0.8);
+  }
+}
+
+.float-cinematic {
+  animation: float-cinematic 3s ease-in-out infinite;
+}
+
+@keyframes gradient-cinematic {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-cinematic {
+  background-size: 400% 400%;
+  animation: gradient-cinematic 15s ease infinite;
+}
