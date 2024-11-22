@@ -18,7 +18,7 @@ export function SocketProvider({ children }) {
     if (!user) return;
     
     try {
-      const res = await axios.get('http://localhost:5000/api/auth/users', {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/users`, {
         headers: {
           'x-auth-token': localStorage.getItem('token')
         }
@@ -43,7 +43,7 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     if (user) {
-      const newSocket = io('http://localhost:5000', {
+      const newSocket = io(`${process.env.NEXT_PUBLIC_API_URL}`, {
         auth: {
           token: localStorage.getItem('token')
         }
