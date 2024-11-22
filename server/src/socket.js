@@ -2,11 +2,17 @@ const jwt = require('jsonwebtoken');
 const { db } = require('./database');
 
 const connectedUsers = new Map();
+let broadcastInterval = null;
 
 const setupSocketHandlers = (io) => {
   // Function to broadcast user lists to all clients
   const broadcastUserLists = async () => {
     try {
+      // Only broadcast if there are connected users
+      if (connectedUsers.size === 0) {
+        return;
+      }
+
       // Get all registered users
       const users = await new Promise((resolve, reject) => {
         db.all('SELECT id, username, online FROM users ORDER BY username', [], (err, users) => {
@@ -24,25 +30,14 @@ const setupSocketHandlers = (io) => {
       // Get online users
       const onlineUsers = updatedUsers.filter(user => user.online);
 
-      console.log('Connected Users:', Array.from(connectedUsers.keys()));
-      console.log('Broadcasting users:', {
-        all: updatedUsers.map(u => ({ id: u.id, username: u.username, online: u.online })),
-        online: onlineUsers.map(u => ({ id: u.id, username: u.username }))
-      });
-
-      // Broadcast to ALL connected clients
-      io.emit('userLists', {
-        allUsers: updatedUsers,
-        onlineUsers: onlineUsers
-      });
-
-      // Also emit individual online status updates
-      onlineUsers.forEach(user => {
-        io.emit('userOnline', {
-          userId: user.id,
-          username: user.username
+      // Only broadcast if there are actual changes
+      if (onlineUsers.length > 0) {
+        // Broadcast to ALL connected clients
+        io.emit('userLists', {
+          allUsers: updatedUsers,
+          onlineUsers: onlineUsers
         });
-      });
+      }
     } catch (err) {
       console.error('Error broadcasting users:', err);
     }
@@ -50,6 +45,11 @@ const setupSocketHandlers = (io) => {
 
   // Handle private messages
   const handlePrivateMessage = async (socket, data) => {
+    if (!socket.userId) {
+      socket.emit('messageError', { error: 'Not authenticated' });
+      return;
+    }
+
     const { recipientId, content, messageType = 'text', mediaUrl = null } = data;
 
     try {
@@ -73,19 +73,14 @@ const setupSocketHandlers = (io) => {
         });
       });
 
-      console.log('Message saved:', message);
-
       // Send to recipient if online
       const recipientSocket = connectedUsers.get(recipientId.toString());
       if (recipientSocket) {
-        console.log('Sending message to recipient:', recipientId);
         io.to(recipientSocket.socketId).emit('newMessage', message);
       }
 
       // Send confirmation to sender
       socket.emit('messageSent', message);
-      console.log('Message sent confirmation:', message);
-
     } catch (err) {
       console.error('Error handling private message:', err);
       socket.emit('messageError', { error: 'Failed to send message' });
@@ -95,155 +90,149 @@ const setupSocketHandlers = (io) => {
   io.on('connection', async (socket) => {
     try {
       const token = socket.handshake.auth.token;
-      if (!token) throw new Error('Authentication error');
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+      if (!token) {
+        throw new Error('No authentication token provided');
+      }
+      
+      let decoded;
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+      } catch (error) {
+        throw new Error('Invalid authentication token');
+      }
+
       const userId = decoded.userId;
+      
+      // Verify user exists in database
+      const user = await new Promise((resolve, reject) => {
+        db.get('SELECT id, username FROM users WHERE id = ?', [userId], (err, user) => {
+          if (err) reject(err);
+          else resolve(user);
+        });
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
       socket.userId = userId;
 
-      // Get user info
-      db.get('SELECT username FROM users WHERE id = ?', [userId], async (err, user) => {
-        if (err || !user) {
-          console.error('Error fetching user:', err);
-          socket.disconnect();
+      // Store user connection
+      connectedUsers.set(userId.toString(), {
+        socketId: socket.id,
+        username: user.username,
+        lastPing: Date.now()
+      });
+
+      // Update user's online status in database
+      await new Promise((resolve, reject) => {
+        db.run('UPDATE users SET online = ? WHERE id = ?', [1, userId], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // Broadcast updated user list
+      await broadcastUserLists();
+
+      // Handle private messages
+      socket.on('privateMessage', (data) => handlePrivateMessage(socket, data));
+
+      // Handle message history request
+      socket.on('getMessageHistory', async ({ otherUserId }) => {
+        if (!socket.userId) {
+          socket.emit('messageError', { error: 'Not authenticated' });
           return;
         }
 
-        // Store user connection
-        connectedUsers.set(userId.toString(), {
-          socketId: socket.id,
-          username: user.username
-        });
-
-        console.log('User connected:', { userId, username: user.username });
-        console.log('Current connected users:', Array.from(connectedUsers.entries()));
-
-        // Handle private messages
-        socket.on('privateMessage', (data) => handlePrivateMessage(socket, data));
-
-        // Handle message history request
-        socket.on('getMessageHistory', async ({ otherUserId }) => {
-          try {
-            const messages = await new Promise((resolve, reject) => {
-              db.all(
-                `SELECT * FROM messages 
-                 WHERE (sender_id = ? AND recipient_id = ?)
-                 OR (sender_id = ? AND recipient_id = ?)
-                 ORDER BY created_at ASC`,
-                [socket.userId, otherUserId, otherUserId, socket.userId],
-                (err, messages) => {
-                  if (err) reject(err);
-                  else resolve(messages);
-                }
-              );
-            });
-
-            socket.emit('messageHistory', messages);
-            console.log('Sent message history:', messages);
-          } catch (err) {
-            console.error('Error fetching message history:', err);
-            socket.emit('messageError', { error: 'Failed to fetch message history' });
-          }
-        });
-
-        // Handle disconnect
-        socket.on('disconnect', async () => {
-          // Wait a bit to see if it's just a reconnect
-          setTimeout(async () => {
-            const userConnection = connectedUsers.get(userId.toString());
-            if (!userConnection || Date.now() - userConnection.lastPing > 10000) {
-              connectedUsers.delete(userId.toString());
-              console.log(`User ${user.username} (${userId}) disconnected`);
-
-              // Update user's online status in database
-              await new Promise((resolve, reject) => {
-                db.run('UPDATE users SET online = ? WHERE id = ?', [0, userId], (err) => {
-                  if (err) reject(err);
-                  else resolve();
-                });
-              });
-
-              // Broadcast user offline status
-              io.emit('userOffline', { userId });
-              await broadcastUserLists();
-            }
-          }, 5000);
-        });
-
-        // Handle typing status
-        socket.on('typing', ({ recipientId }) => {
-          const recipientSocket = connectedUsers.get(recipientId.toString());
-          if (recipientSocket) {
-            io.to(recipientSocket.socketId).emit('userTyping', {
-              userId: socket.userId,
-              username: connectedUsers.get(socket.userId.toString()).username
-            });
-          }
-        });
-
-        socket.on('stopTyping', ({ recipientId }) => {
-          const recipientSocket = connectedUsers.get(recipientId.toString());
-          if (recipientSocket) {
-            io.to(recipientSocket.socketId).emit('userStoppedTyping', {
-              userId: socket.userId
-            });
-          }
-        });
-
-        // Handle message seen
-        socket.on('messageSeen', async ({ messageId }) => {
-          try {
-            const message = await new Promise((resolve, reject) => {
-              db.get('SELECT * FROM messages WHERE id = ?', [messageId], (err, msg) => {
+        try {
+          const messages = await new Promise((resolve, reject) => {
+            db.all(
+              `SELECT * FROM messages 
+               WHERE (sender_id = ? AND recipient_id = ?)
+               OR (sender_id = ? AND recipient_id = ?)
+               ORDER BY created_at ASC`,
+              [socket.userId, otherUserId, otherUserId, socket.userId],
+              (err, messages) => {
                 if (err) reject(err);
-                else resolve(msg);
-              });
-            });
-
-            if (message) {
-              db.run('UPDATE messages SET seen = 1, read = 1 WHERE id = ?', [messageId]);
-              
-              const senderSocket = connectedUsers.get(message.sender_id.toString());
-              if (senderSocket) {
-                io.to(senderSocket.socketId).emit('messageSeen', { messageId });
+                else resolve(messages);
               }
-            }
-          } catch (err) {
-            console.error('Error marking message as seen:', err);
-          }
-        });
+            );
+          });
 
-        // Handle read receipts
-        socket.on('messageRead', async ({ messageId }) => {
-          try {
-            const message = await new Promise((resolve, reject) => {
-              db.get('SELECT * FROM messages WHERE id = ?', [messageId], (err, msg) => {
-                if (err) reject(err);
-                else resolve(msg);
-              });
-            });
-
-            if (message) {
-              db.run('UPDATE messages SET read = 1 WHERE id = ?', [messageId]);
-              
-              const senderSocket = connectedUsers.get(message.sender_id.toString());
-              if (senderSocket) {
-                io.to(senderSocket.socketId).emit('messageRead', { messageId });
-              }
-            }
-          } catch (err) {
-            console.error('Error marking message as read:', err);
-          }
-        });
+          socket.emit('messageHistory', messages);
+        } catch (err) {
+          console.error('Error fetching message history:', err);
+          socket.emit('messageError', { error: 'Failed to fetch message history' });
+        }
       });
-    } catch (err) {
-      console.error('Error handling connection:', err);
-      socket.disconnect();
+
+      // Handle disconnect
+      socket.on('disconnect', async () => {
+        connectedUsers.delete(userId.toString());
+
+        // Update user's online status in database
+        await new Promise((resolve, reject) => {
+          db.run('UPDATE users SET online = ? WHERE id = ?', [0, userId], (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        // Broadcast user offline status
+        io.emit('userOffline', { userId });
+        await broadcastUserLists();
+      });
+
+      // Handle typing status
+      socket.on('typing', ({ recipientId }) => {
+        if (!socket.userId) return;
+        
+        const recipientSocket = connectedUsers.get(recipientId.toString());
+        if (recipientSocket) {
+          io.to(recipientSocket.socketId).emit('userTyping', {
+            userId: socket.userId,
+            username: connectedUsers.get(socket.userId.toString()).username
+          });
+        }
+      });
+
+      socket.on('stopTyping', ({ recipientId }) => {
+        if (!socket.userId) return;
+
+        const recipientSocket = connectedUsers.get(recipientId.toString());
+        if (recipientSocket) {
+          io.to(recipientSocket.socketId).emit('userStoppedTyping', {
+            userId: socket.userId
+          });
+        }
+      });
+
+      // Handle message seen
+      socket.on('messageSeen', async ({ messageId }) => {
+        if (!socket.userId) return;
+
+        try {
+          await new Promise((resolve, reject) => {
+            db.run('UPDATE messages SET read = 1 WHERE id = ?', [messageId], (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+
+          io.emit('messageRead', { messageId });
+        } catch (err) {
+          console.error('Error marking message as seen:', err);
+        }
+      });
+
+    } catch (error) {
+      console.error('Socket authentication error:', error.message);
+      socket.emit('error', { message: error.message });
+      socket.disconnect(true);
     }
   });
-
-  // Periodically broadcast user lists to ensure synchronization
-  setInterval(broadcastUserLists, 5000);
 };
 
 module.exports = { setupSocketHandlers };
