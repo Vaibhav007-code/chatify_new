@@ -29,13 +29,17 @@ process.on('unhandledRejection', (reason, promise) => {
 try {
   const io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:3000',
-      methods: ['GET', 'POST']
+      origin: process.env.FRONTEND_URL || 'https://chatify-new.vercel.app',
+      methods: ['GET', 'POST'],
+      credentials: true
     }
   });
 
   // Middleware
-  app.use(cors());
+  app.use(cors({
+    origin: process.env.FRONTEND_URL || 'https://chatify-new.vercel.app',
+    credentials: true
+  }));
   app.use(express.json());
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
@@ -51,10 +55,7 @@ try {
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
-
-  server.on('error', (error) => {
-    console.error('Server error:', error);
-  });
 } catch (error) {
-  console.error('Error starting the server:', error);
-} 
+  console.error('Server Error:', error);
+  process.exit(1);
+}
