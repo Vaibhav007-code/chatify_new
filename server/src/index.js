@@ -29,16 +29,19 @@ process.on('unhandledRejection', (reason, promise) => {
 try {
   const io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'https://chatify-new.vercel.app',
-      methods: ['GET', 'POST'],
-      credentials: true
+      origin: process.env.FRONTEND_URL || "https://chatify-new.vercel.app",
+      methods: ["GET", "POST", "PUT", "DELETE"],
+      credentials: true,
+      allowedHeaders: ["Content-Type", "x-auth-token"]
     }
   });
 
   // Middleware
   app.use(cors({
-    origin: process.env.FRONTEND_URL || 'https://chatify-new.vercel.app',
-    credentials: true
+    origin: process.env.FRONTEND_URL || "https://chatify-new.vercel.app",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "x-auth-token"]
   }));
   app.use(express.json());
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
