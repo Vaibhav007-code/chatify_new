@@ -33,7 +33,7 @@ export function AuthProvider({ children }) {
         const token = localStorage.getItem('token');
         if (token) {
           axios.defaults.headers.common['x-auth-token'] = token;
-          const res = await axios.get('http://localhost:5000/api/auth/user');
+          const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/user`);
           setUser(res.data);
         }
       } catch (err) {
@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
         username,
         password
       });
@@ -66,7 +66,7 @@ export function AuthProvider({ children }) {
 
   const register = async (username, email, password) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/register', {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
         username,
         email,
         password
