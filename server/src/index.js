@@ -14,6 +14,12 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// Get port from environment variable or use default
+const PORT = process.env.PORT || 5000;
+
+// Initialize database
+require('./database');
+
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
@@ -54,11 +60,17 @@ try {
   // Socket.io setup
   setupSocketHandlers(io);
 
-  const PORT = process.env.PORT || 5000;
+  // Error handling middleware
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ message: 'Something went wrong!' });
+  });
+
+  // Start server
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 } catch (error) {
-  console.error('Server Error:', error);
+  console.error('Server initialization error:', error);
   process.exit(1);
 }
