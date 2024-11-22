@@ -10,7 +10,7 @@ import Link from 'next/link';
 
 export default function Register() {
   const [username, setUsername] = useState('');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,11 +22,11 @@ export default function Register() {
     try {
       setError('');
       setLoading(true);
-      await register(username, phone, password);
+      await register(username, email, password);
       router.push('/chat');
     } catch (err) {
       setError(err.message || 'Failed to create an account');
-      console.error(err);
+      console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ export default function Register() {
             <div>
               <Input
                 type="text"
-                placeholder="Name"
+                placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full p-3 bg-white/10 border border-white/20 text-white placeholder-white/60 rounded-lg"
@@ -66,10 +66,10 @@ export default function Register() {
             </div>
             <div>
               <Input
-                type="tel"
-                placeholder="Phone Number (with country code)"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full p-3 bg-white/10 border border-white/20 text-white placeholder-white/60 rounded-lg"
                 required
               />
@@ -103,4 +103,4 @@ export default function Register() {
       </motion.div>
     </div>
   );
-} 
+}
