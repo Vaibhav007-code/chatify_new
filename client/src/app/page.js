@@ -2,27 +2,38 @@
 
 import { useState, useEffect } from 'react';
 import Login from '@/components/Login';
-import Chat from '@/components/Chat';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import Register from '@/components/Register';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AuthProvider } from '@/contexts/AuthContext';
+import { SocketProvider } from '@/contexts/SocketContext';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Chat component with no SSR
+const Chat = dynamic(() => import('@/components/Chat'), { ssr: false });
 
 export default function Home() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 dark:border-white"></div>
-      </div>
-    );
-  }
-
-  // If no user is logged in, show the login page
-  if (!user) {
-    return <Login />;
-  }
-
-  // If user is logged in, show the chat interface
-  return <Chat />;
+  return (
+    <AuthProvider>
+      <SocketProvider>
+        <main className="min-h-screen">
+          <Tabs defaultValue="register" className="w-full">
+            <TabsList className="hidden">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger value="chat">Chat</TabsTrigger>
+            </TabsList>
+            <TabsContent value="login">
+              <Login />
+            </TabsContent>
+            <TabsContent value="register">
+              <Register />
+            </TabsContent>
+            <TabsContent value="chat">
+              <Chat />
+            </TabsContent>
+          </Tabs>
+        </main>
+      </SocketProvider>
+    </AuthProvider>
+  );
 }
