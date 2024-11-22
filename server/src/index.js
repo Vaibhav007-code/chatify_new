@@ -23,13 +23,15 @@ require('./database');
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  process.exit(1);
+  // Don't exit the process, just log the error
+  // process.exit(1);
 });
 
 // Error handling for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
+  // Don't exit the process, just log the error
+  // process.exit(1);
 });
 
 try {
@@ -52,18 +54,27 @@ try {
   app.use(express.json());
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+  // Request logging middleware
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`, req.body);
+    next();
+  });
+
   // Routes
   app.use('/api/auth', authRoutes);
   app.use('/api/messages', messageRoutes);
   app.use('/api/groups', groupRoutes);
+
+  // Make io available globally
+  global.io = io;
 
   // Socket.io setup
   setupSocketHandlers(io);
 
   // Error handling middleware
   app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ message: 'Something went wrong!' });
+    console.error('Error:', err.stack);
+    res.status(500).json({ message: 'Something went wrong!', error: err.message });
   });
 
   // Start server
@@ -72,5 +83,4 @@ try {
   });
 } catch (error) {
   console.error('Server initialization error:', error);
-  process.exit(1);
 }
