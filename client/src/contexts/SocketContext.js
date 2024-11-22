@@ -26,118 +26,69 @@ export function SocketProvider({ children }) {
       
       // Get all users except current user
       const otherUsers = res.data.filter(u => u.id !== user.id);
-      
-      // Update users with online status from connectedUsers
-      const updatedUsers = otherUsers.map(u => ({
-        ...u,
-        online: onlineUsers.some(ou => ou.id === u.id)
-      }));
-      
-      console.log('Current user:', user.username);
-      console.log('All registered users:', updatedUsers);
-      setAllUsers(updatedUsers);
+      setAllUsers(otherUsers);
     } catch (err) {
       console.error('Error fetching users:', err);
     }
   };
 
+  // Initialize socket connection when user logs in
   useEffect(() => {
-    if (user) {
-      const newSocket = io(`${process.env.NEXT_PUBLIC_API_URL}`, {
+    if (user && !socket) {
+      const newSocket = io(process.env.NEXT_PUBLIC_API_URL, {
         auth: {
           token: localStorage.getItem('token')
         }
       });
 
       newSocket.on('connect', () => {
-        console.log('Socket connected for user:', user.username);
-        newSocket.emit('userConnected', {
-          userId: user.id,
-          username: user.username
-        });
-        fetchAllUsers(); // Initial fetch
+        console.log('Connected to socket server');
+        newSocket.emit('login', user.id);
       });
 
-      // Handle user lists updates
-      newSocket.on('userLists', ({ allUsers: serverAllUsers, onlineUsers: serverOnlineUsers }) => {
-        console.log('Received user lists update:', { serverAllUsers, serverOnlineUsers });
-        
-        // Filter out current user from both lists
-        const otherUsers = serverAllUsers.filter(u => u.id !== user.id);
-        const otherOnlineUsers = serverOnlineUsers.filter(u => u.id !== user.id);
-        
-        // Update states with correct online status
-        setAllUsers(otherUsers.map(u => ({
-          ...u,
-          online: otherOnlineUsers.some(ou => ou.id === u.id)
-        })));
-        setOnlineUsers(otherOnlineUsers);
-      });
-
-      // Handle user online status
       newSocket.on('userOnline', ({ userId, username }) => {
-        console.log('User came online:', username);
-        setAllUsers(prev => prev.map(u => 
-          u.id === userId ? { ...u, online: true } : u
-        ));
-        setOnlineUsers(prev => {
-          const isAlreadyOnline = prev.some(u => u.id === userId);
-          if (!isAlreadyOnline) {
-            return [...prev, { id: userId, username, online: true }];
-          }
-          return prev;
-        });
+        setOnlineUsers(prev => [...prev, userId]);
+        fetchAllUsers(); // Refresh user list when someone comes online
       });
 
       newSocket.on('userOffline', ({ userId }) => {
-        console.log('User went offline:', userId);
-        setAllUsers(prev => prev.map(u => 
-          u.id === userId ? { ...u, online: false } : u
-        ));
-        setOnlineUsers(prev => prev.filter(u => u.id !== userId));
-      });
-
-      // Handle disconnection
-      window.addEventListener('beforeunload', () => {
-        newSocket.emit('userDisconnected', {
-          userId: user.id,
-          username: user.username
-        });
+        setOnlineUsers(prev => prev.filter(id => id !== userId));
+        fetchAllUsers(); // Refresh user list when someone goes offline
       });
 
       setSocket(newSocket);
-
-      return () => {
-        if (newSocket) {
-          newSocket.emit('userDisconnected', {
-            userId: user.id,
-            username: user.username
-          });
-          newSocket.disconnect();
-        }
-      };
+      fetchAllUsers(); // Initial fetch of users
     }
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
   }, [user]);
 
-  // Periodically fetch all users to keep list synchronized
+  // Refresh users list periodically
   useEffect(() => {
     if (user) {
-      const interval = setInterval(fetchAllUsers, 5000);
+      const interval = setInterval(fetchAllUsers, 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
   }, [user]);
 
+  const value = {
+    socket,
+    onlineUsers,
+    allUsers,
+    fetchAllUsers
+  };
+
   return (
-    <SocketContext.Provider value={{ 
-      socket, 
-      onlineUsers,
-      allUsers,
-      currentUser: user,
-      refreshUsers: fetchAllUsers
-    }}>
+    <SocketContext.Provider value={value}>
       {children}
     </SocketContext.Provider>
   );
 }
 
-export const useSocket = () => useContext(SocketContext);
+export function useSocket() {
+  return useContext(SocketContext);
+}
