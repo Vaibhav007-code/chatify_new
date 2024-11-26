@@ -34,15 +34,27 @@ export function AuthProvider({ children }) {
     const checkUser = async () => {
       try {
         const token = localStorage.getItem('token');
-        if (token) {
-          axios.defaults.headers.common['x-auth-token'] = token;
-          const res = await axios.get('/api/auth/user');
-          setUser(res.data);
+        if (!token) {
+          setLoading(false);
+          return;
         }
+
+        // Validate token format
+        if (!token.match(/^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.[A-Za-z0-9-_.+/=]*$/)) {
+          console.error('Invalid token format');
+          localStorage.removeItem('token');
+          setLoading(false);
+          return;
+        }
+
+        axios.defaults.headers.common['x-auth-token'] = token;
+        const res = await axios.get('/api/auth/user');
+        setUser(res.data);
       } catch (err) {
-        console.error('Auth check error:', err);
+        console.error('Auth check error:', err.response?.data || err);
         localStorage.removeItem('token');
         delete axios.defaults.headers.common['x-auth-token'];
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -53,18 +65,28 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     try {
+      if (!username || !password) {
+        throw new Error('Username and password are required');
+      }
+
       console.log('Attempting login with:', { username });
       const res = await axios.post('/api/auth/login', {
-        username,
-        password
+        username: username.trim(),
+        password: password.trim()
       });
+
+      if (!res.data?.token) {
+        throw new Error('No token received from server');
+      }
+
       localStorage.setItem('token', res.data.token);
       axios.defaults.headers.common['x-auth-token'] = res.data.token;
       setUser(res.data.user);
       return true;
     } catch (err) {
-      console.error('Login error:', err.response?.data || err.message);
-      throw err.response?.data?.message || 'Failed to login';
+      console.error('Login error:', err.response?.data || err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to login';
+      throw new Error(errorMessage);
     }
   };
 

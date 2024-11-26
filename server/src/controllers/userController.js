@@ -33,31 +33,35 @@ const userController = {
     const { username, password } = req.body;
 
     if (!username || !password) {
+      console.log('Login failed: Missing credentials');
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
     try {
       // Find user by username
-      db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
+      db.get('SELECT * FROM users WHERE username = ? COLLATE NOCASE', [username], async (err, user) => {
         if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ message: 'Server error' });
+          console.error('Database error during login:', err);
+          return res.status(500).json({ message: 'Server error during login' });
         }
         
         if (!user) {
-          return res.status(400).json({ message: 'User not found' });
+          console.log('Login failed: User not found -', username);
+          return res.status(400).json({ message: 'Invalid username or password' });
         }
 
         try {
           const isMatch = await bcrypt.compare(password, user.password);
           if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid password' });
+            console.log('Login failed: Invalid password for user -', username);
+            return res.status(400).json({ message: 'Invalid username or password' });
           }
 
           // Update user's online status
           db.run('UPDATE users SET online = ?, last_active = datetime("now") WHERE id = ?', [1, user.id], async (err) => {
             if (err) {
               console.error('Error updating user status:', err);
+              // Continue with login even if status update fails
             }
 
             const token = jwt.sign(
@@ -66,7 +70,7 @@ const userController = {
               { expiresIn: '24h' }
             );
 
-            console.log('User logged in successfully:', { username: user.username });
+            console.log('User logged in successfully:', { username: user.username, userId: user.id });
 
             // Notify other users
             if (global.io) {
@@ -88,12 +92,12 @@ const userController = {
           });
         } catch (compareError) {
           console.error('Password comparison error:', compareError);
-          return res.status(500).json({ message: 'Error verifying password' });
+          return res.status(500).json({ message: 'Error verifying credentials' });
         }
       });
     } catch (err) {
-      console.error('Server error:', err);
-      res.status(500).json({ message: 'Server error' });
+      console.error('Server error during login:', err);
+      res.status(500).json({ message: 'Server error during login' });
     }
   },
 

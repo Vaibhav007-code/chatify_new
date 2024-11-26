@@ -18,14 +18,24 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter both username and password');
+      return;
+    }
+
     try {
       setError('');
       setLoading(true);
       await login(username, password);
       router.push('/chat');
     } catch (err) {
-      setError(err.message || 'Failed to sign in. Please check your username and password.');
-      console.error(err);
+      console.error('Login error:', err);
+      setError(err?.message || 'Failed to sign in. Please check your username and password.');
+      
+      // Clear password field on error
+      setPassword('');
     } finally {
       setLoading(false);
     }
